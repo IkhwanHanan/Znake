@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game Ultimate Edition</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #050811;
+            color: #f3f4f6;
+            touch-action: manipulation;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Glassmorphism & Neon Effects */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glow-emerald {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+        }
+
+        .glow-text-emerald {
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+        }
+
+        /* Screen Shake Animation */
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-2px, -2px) rotate(-1deg); }
+            40% { transform: translate(-1px, 2px) rotate(1deg); }
+            60% { transform: translate(2px, 1px) rotate(0deg); }
+            80% { transform: translate(1px, -1px) rotate(1deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        .shake {
+            animation: shake 0.25s ease-in-out;
+        }
+
+        /* Custom Scrollbar for Modals */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 select-none overflow-x-hidden">
+
+    <!-- Header & Title -->
+    <header class="w-full max-w-lg flex items-center justify-between mb-3 px-2">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-black font-orbitron tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-cyan-400 to-indigo-500 glow-text-emerald">
+                SNAKE<span class="text-xs text-emerald-400 ml-1 font-normal border border-emerald-500/50 px-1.5 py-0.5 rounded">ULTIMATE</span>
+            </h1>
+            <p class="text-xs text-gray-400">Retro Arcade Reimagined</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="bgmToggle" class="p-2 rounded-lg glass-panel hover:bg-slate-800 transition text-gray-300 hover:text-emerald-400" title="Toggle Music">
+                🎵
+            </button>
+            <button id="sfxToggle" class="p-2 rounded-lg glass-panel hover:bg-slate-800 transition text-gray-300 hover:text-emerald-400" title="Toggle Sound Effects">
+                🔊
+            </button>
+            <button id="skinBtn" class="p-2 rounded-lg glass-panel hover:bg-slate-800 transition text-gray-300 hover:text-emerald-400 text-sm font-semibold flex items-center gap-1">
+                🎨 <span class="hidden sm:inline">Skin</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Score Board Bar -->
+    <div class="w-full max-w-lg glass-panel rounded-xl p-3 mb-3 grid grid-cols-4 gap-2 text-center shadow-lg border border-slate-800">
+        <div class="bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Skor</div>
+            <div id="scoreDisplay" class="text-xl sm:text-2xl font-black font-orbitron text-emerald-400">0</div>
+        </div>
+        <div class="bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Tertinggi</div>
+            <div id="highScoreDisplay" class="text-xl sm:text-2xl font-black font-orbitron text-yellow-400">0</div>
+        </div>
+        <div class="bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Kombo</div>
+            <div id="comboDisplay" class="text-xl sm:text-2xl font-black font-orbitron text-cyan-400">x1</div>
+        </div>
+        <div class="bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Level</div>
+            <div id="levelDisplay" class="text-xl sm:text-2xl font-black font-orbitron text-purple-400">1</div>
+        </div>
+    </div>
+
+    <!-- Active Power-Up Banner -->
+    <div id="powerupBar" class="w-full max-w-lg mb-2 hidden">
+        <div class="glass-panel px-3 py-1.5 rounded-lg flex items-center justify-between text-xs font-bold border border-emerald-500/40">
+            <span id="powerupStatus" class="flex items-center gap-1.5">⚡ SPEED BOOST</span>
+            <div class="w-24 bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div id="powerupProgress" class="bg-emerald-400 h-full w-full transition-all duration-100"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Game Container -->
+    <div id="gameContainer" class="relative w-full max-w-lg aspect-square rounded-2xl overflow-hidden glass-panel glow-emerald border border-slate-700/60">
+        <!-- Canvas -->
+        <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+        <!-- Start Overlay -->
+        <div id="startOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10">
+            <div class="w-16 h-16 mb-3 rounded-full bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center text-3xl shadow-lg shadow-emerald-500/20">
+                🐍
+            </div>
+            <h2 class="text-2xl font-black font-orbitron text-white mb-1">SNAKE ULTIMATE</h2>
+            <p class="text-xs text-gray-400 mb-5 max-w-xs">Gunakan Tombol Panah / WASD / D-Pad Layar untuk mengendalikan Ular.</p>
+
+            <!-- Mode Selector -->
+            <div class="w-full max-w-xs mb-5">
+                <label class="block text-xs font-bold text-gray-400 mb-1.5 uppercase text-left">Pilih Mode Permainan:</label>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button data-mode="classic" class="mode-btn p-2 rounded-lg border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold transition">Classic</button>
+                    <button data-mode="hardcore" class="mode-btn p-2 rounded-lg border border-slate-700 bg-slate-800/80 text-gray-400 font-bold hover:border-slate-500 transition">Hardcore</button>
+                    <button data-mode="maze" class="mode-btn p-2 rounded-lg border border-slate-700 bg-slate-800/80 text-gray-400 font-bold hover:border-slate-500 transition">Maze</button>
+                    <button data-mode="timeattack" class="mode-btn p-2 rounded-lg border border-slate-700 bg-slate-800/80 text-gray-400 font-bold hover:border-slate-500 transition">Time Attack</button>
+                </div>
+            </div>
+
+            <button id="startBtn" class="w-full max-w-xs py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black font-orbitron text-base shadow-lg shadow-emerald-500/30 transition transform hover:scale-105 active:scale-95">
+                MULAI GAME
+            </button>
+        </div>
+
+        <!-- Pause Overlay -->
+        <div id="pauseOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10 hidden">
+            <h2 class="text-3xl font-black font-orbitron text-yellow-400 mb-2">GAME PAUSED</h2>
+            <p class="text-xs text-gray-400 mb-6">Permainan Sedang Dihentikan</p>
+            <button id="resumeBtn" class="px-8 py-3 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black font-orbitron text-sm shadow-lg transition transform hover:scale-105 active:scale-95">
+                LANJUTKAN
+            </button>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="gameOverOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-10 hidden">
+            <div class="text-4xl mb-2">💀</div>
+            <h2 class="text-2xl font-black font-orbitron text-red-500 mb-1">GAME OVER</h2>
+            <p id="gameOverReason" class="text-xs text-gray-400 mb-4">Ular menabrak rintangan!</p>
+
+            <div class="w-full max-w-xs glass-panel rounded-xl p-3 mb-5 border border-slate-800 text-left text-xs space-y-1.5">
+                <div class="flex justify-between"><span class="text-gray-400">Skor Akhir:</span><span id="finalScore" class="font-bold text-emerald-400 font-orbitron">0</span></div>
+                <div class="flex justify-between"><span class="text-gray-400">Skor Tertinggi:</span><span id="finalHighScore" class="font-bold text-yellow-400 font-orbitron">0</span></div>
+                <div class="flex justify-between"><span class="text-gray-400">Waktu Bertahan:</span><span id="finalTime" class="font-bold text-cyan-400 font-orbitron">0s</span></div>
+                <div class="flex justify-between"><span class="text-gray-400">Max Combo:</span><span id="finalCombo" class="font-bold text-purple-400 font-orbitron">x1</span></div>
+            </div>
+
+            <button id="restartBtn" class="w-full max-w-xs py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black font-orbitron text-sm shadow-lg shadow-emerald-500/30 transition transform hover:scale-105 active:scale-95">
+                MAIN LAGI
+            </button>
+        </div>
+    </div>
+
+    <!-- On-Screen Mobile D-Pad Controls -->
+    <div class="w-full max-w-lg mt-4 flex justify-between items-center px-2">
+        <button id="pauseBtn" class="p-3 rounded-xl glass-panel hover:bg-slate-800 text-xs font-bold text-gray-300 flex items-center gap-1">
+            ⏸️ <span>Pause</span>
+        </button>
+
+        <!-- D-Pad Controls -->
+        <div class="grid grid-cols-3 gap-1.5 w-36 h-36">
+            <div></div>
+            <button id="btnUp" class="bg-slate-800/80 active:bg-emerald-500 border border-slate-700/80 rounded-lg flex items-center justify-center text-lg active:text-slate-950 transition">▲</button>
+            <div></div>
+            <button id="btnLeft" class="bg-slate-800/80 active:bg-emerald-500 border border-slate-700/80 rounded-lg flex items-center justify-center text-lg active:text-slate-950 transition">◀</button>
+            <div class="flex items-center justify-center text-[10px] text-gray-600 font-bold">D-PAD</div>
+            <button id="btnRight" class="bg-slate-800/80 active:bg-emerald-500 border border-slate-700/80 rounded-lg flex items-center justify-center text-lg active:text-slate-950 transition">▶</button>
+            <div></div>
+            <button id="btnDown" class="bg-slate-800/80 active:bg-emerald-500 border border-slate-700/80 rounded-lg flex items-center justify-center text-lg active:text-slate-950 transition">▼</button>
+            <div></div>
+        </div>
+
+        <button id="achieveBtn" class="p-3 rounded-xl glass-panel hover:bg-slate-800 text-xs font-bold text-gray-300 flex items-center gap-1">
+            🏆 <span>Piala</span>
+        </button>
+    </div>
+
+    <!-- Skin Selection Modal -->
+    <div id="skinModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-5 border border-slate-700 shadow-2xl max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-black font-orbitron text-emerald-400">KUSTOM SKIN</h3>
+                <button id="closeSkinBtn" class="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            
+            <div class="overflow-y-auto space-y-4 pr-1 flex-1">
+                <div>
+                    <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Skin Ular</h4>
+                    <div id="snakeSkinList" class="grid grid-cols-2 gap-2 text-xs"></div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold uppercase text-gray-400 mb-2">Skin Makanan</h4>
+                    <div id="foodSkinList" class="grid grid-cols-2 gap-2 text-xs"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements Modal -->
+    <div id="achieveModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-5 border border-slate-700 shadow-2xl max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-black font-orbitron text-yellow-400">PENCAPAIAN / BADGES</h3>
+                <button id="closeAchieveBtn" class="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div id="achievementList" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- SOUND ENGINE (WEB AUDIO API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.sfxEnabled = true;
+                this.bgmEnabled = true;
+                this.bgmInterval = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playTone(freq, type, duration, vol = 0.1) {
+                if (!this.sfxEnabled || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+
+            playEat() {
+                this.playTone(600, 'sine', 0.1, 0.15);
+                setTimeout(() => this.playTone(850, 'sine', 0.15, 0.15), 50);
+            }
+
+            playBonus() {
+                [523, 659, 783, 1046].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 'triangle', 0.15, 0.2), i * 60);
+                });
+            }
+
+            playPowerup() {
+                this.playTone(300, 'sawtooth', 0.1, 0.15);
+                setTimeout(() => this.playTone(600, 'sawtooth', 0.2, 0.15), 80);
+            }
+
+            playBad() {
+                this.playTone(200, 'sawtooth', 0.2, 0.2);
+            }
+
+            playGameOver() {
+                [300, 250, 200, 150].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 'sawtooth', 0.2, 0.2), i * 100);
+                });
+            }
+
+            startBGM() {
+                if (this.bgmInterval || !this.bgmEnabled) return;
+                const notes = [261, 293, 329, 349, 392, 440, 493, 523];
+                let idx = 0;
+                this.bgmInterval = setInterval(() => {
+                    if (this.bgmEnabled && this.ctx) {
+                        this.playTone(notes[idx % notes.length], 'sine', 0.2, 0.03);
+                        idx++;
+                    }
+                }, 300);
+            }
+
+            stopBGM() {
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+        }
+
+        const sound = new SoundEngine();
+
+        // --- SKINS DATA ---
+        const SNAKE_SKINS = [
+            { id: 'emerald', name: 'Emerald Neon', req: 0, head: '#10b981', body: '#059669' },
+            { id: 'cyber', name: 'Cyber Cyan', req: 50, head: '#06b6d4', body: '#0891b2' },
+            { id: 'inferno', name: 'Inferno Red', req: 100, head: '#ef4444', body: '#dc2626' },
+            { id: 'galaxy', name: 'Galaxy Purple', req: 180, head: '#a855f7', body: '#7e22ce' },
+            { id: 'golden', name: 'Golden Glow', req: 250, head: '#eab308', body: '#ca8a04' },
+            { id: 'rainbow', name: 'Rainbow Party', req: 350, head: '#ec4899', body: 'rainbow' }
+        ];
+
+        const FOOD_SKINS = [
+            { id: 'apple', name: 'Classic Apple', req: 0, color: '#ef4444', icon: '🍎' },
+            { id: 'star', name: 'Golden Star', req: 60, color: '#eab308', icon: '⭐' },
+            { id: 'diamond', name: 'Cyan Diamond', req: 140, color: '#06b6d4', icon: '💎' },
+            { id: 'pizza', name: 'Pizza Slice', req: 220, color: '#f97316', icon: '🍕' }
+        ];
+
+        // --- ACHIEVEMENTS DATA ---
+        const ACHIEVEMENTS = [
+            { id: 'first_bite', title: 'Gigitan Pertama', desc: 'Makan makanan pertama kamu.', icon: '🐣', unlocked: false },
+            { id: 'combo_3', title: 'Combo Master', desc: 'Capai multiplier kombo x3.', icon: '🔥', unlocked: false },
+            { id: 'shield_save', title: 'Penyelamat Nyawa', desc: 'Gunakan Shield untuk selamat dari tabrakan.', icon: '🛡️', unlocked: false },
+            { id: 'boss_hunter', title: 'Pemburu Serangga', desc: 'Berhasil menangkap Target Boss.', icon: '👾', unlocked: false },
+            { id: 'score_100', title: 'Pemain Handal', desc: 'Raih skor 100 poin.', icon: '⭐', unlocked: false },
+            { id: 'score_300', title: 'Raja Ular', desc: 'Raih skor 300 poin.', icon: '👑', unlocked: false }
+        ];
+
+        // --- GAME CONFIG & STATE ---
+        const GRID_SIZE = 20;
+        let canvas, ctx;
+        let tileCount = 20;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('snake_highscore') || '0');
+        let activeMode = 'classic';
+        let gameInterval = null;
+        let isPaused = false;
+        let isGameOver = false;
+        let gameTime = 0;
+        let timerInterval = null;
+
+        // Combo & Level System
+        let combo = 1;
+        let comboTimer = null;
+        let maxCombo = 1;
+        let level = 1;
+
+        // Entities
+        let snake = [];
+        let dx = 1, dy = 0;
+        let nextDx = 1, nextDy = 0;
+        let food = { x: 5, y: 5 };
+        let bonusFood = null;
+        let badFood = null;
+        let powerUp = null;
+        let boss = null;
+        let obstacles = [];
+        let particles = [];
+        let floatingTexts = [];
+
+        // Active Powerup
+        let activePowerUp = null;
+        let powerUpTimer = null;
+        let powerUpTimeLeft = 0;
+
+        // Customization
+        let selectedSnakeSkin = localStorage.getItem('snake_skin_snake') || 'emerald';
+        let selectedFoodSkin = localStorage.getItem('snake_skin_food') || 'apple';
+
+        // Time Attack Mode
+        let timeAttackLeft = 60;
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            loadAchievements();
+            setupEventListeners();
+            updateUI();
+            renderSkinList();
+            renderAchievementList();
+        });
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const size = container.clientWidth;
+            canvas.width = size;
+            canvas.height = size;
+            tileCount = GRID_SIZE;
+        }
+
+        function setupEventListeners() {
+            // Controls
+            document.addEventListener('keydown', handleKeyPress);
+
+            // D-Pad Touch
+            document.getElementById('btnUp').onclick = () => setDirection(0, -1);
+            document.getElementById('btnDown').onclick = () => setDirection(0, 1);
+            document.getElementById('btnLeft').onclick = () => setDirection(-1, 0);
+            document.getElementById('btnRight').onclick = () => setDirection(1, 0);
+
+            // Buttons
+            document.getElementById('startBtn').onclick = startGame;
+            document.getElementById('restartBtn').onclick = startGame;
+            document.getElementById('pauseBtn').onclick = togglePause;
+            document.getElementById('resumeBtn').onclick = togglePause;
+
+            // Audio Toggles
+            document.getElementById('sfxToggle').onclick = () => {
+                sound.sfxEnabled = !sound.sfxEnabled;
+                document.getElementById('sfxToggle').innerText = sound.sfxEnabled ? '🔊' : '🔇';
+            };
+            document.getElementById('bgmToggle').onclick = () => {
+                sound.bgmEnabled = !sound.bgmEnabled;
+                document.getElementById('bgmToggle').innerText = sound.bgmEnabled ? '🎵' : '🚫';
+                if (sound.bgmEnabled && !isGameOver && gameInterval) sound.startBGM();
+                else sound.stopBGM();
+            };
+
+            // Mode Selector
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    document.querySelectorAll('.mode-btn').forEach(b => {
+                        b.className = 'mode-btn p-2 rounded-lg border border-slate-700 bg-slate-800/80 text-gray-400 font-bold hover:border-slate-500 transition';
+                    });
+                    e.target.className = 'mode-btn p-2 rounded-lg border border-emerald-500 bg-emerald-500/20 text-emerald-300 font-bold transition';
+                    activeMode = e.target.dataset.mode;
+                };
+            });
+
+            // Modals
+            document.getElementById('skinBtn').onclick = () => document.getElementById('skinModal').classList.remove('hidden');
+            document.getElementById('closeSkinBtn').onclick = () => document.getElementById('skinModal').classList.add('hidden');
+            document.getElementById('achieveBtn').onclick = () => document.getElementById('achieveModal').classList.remove('hidden');
+            document.getElementById('closeAchieveBtn').onclick = () => document.getElementById('achieveModal').classList.add('hidden');
+        }
+
+        // --- GAME LOOP & CORE LOGIC ---
+        function startGame() {
+            sound.init();
+            sound.startBGM();
+
+            // Reset States
+            snake = [
+                { x: 10, y: 10 },
+                { x: 9, y: 10 },
+                { x: 8, y: 10 }
+            ];
+            dx = 1; dy = 0;
+            nextDx = 1; nextDy = 0;
+            score = 0;
+            combo = 1;
+            maxCombo = 1;
+            level = 1;
+            gameTime = 0;
+            timeAttackLeft = 60;
+            isPaused = false;
+            isGameOver = false;
+
+            activePowerUp = null;
+            bonusFood = null;
+            badFood = null;
+            powerUp = null;
+            boss = null;
+            particles = [];
+            floatingTexts = [];
+
+            generateObstacles();
+            spawnFood();
+
+            // Hide Overlays
+            document.getElementById('startOverlay').classList.add('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            document.getElementById('pauseOverlay').classList.add('hidden');
+            document.getElementById('powerupBar').classList.add('hidden');
+
+            updateUI();
+
+            // Clear Intervals
+            if (gameInterval) clearInterval(gameInterval);
+            if (timerInterval) clearInterval(timerInterval);
+
+            // Start Loops
+            gameInterval = setInterval(gameStep, getSpeed());
+            timerInterval = setInterval(() => {
+                if (!isPaused && !isGameOver) {
+                    gameTime++;
+                    if (activeMode === 'timeattack') {
+                        timeAttackLeft--;
+                        if (timeAttackLeft <= 0) {
+                            triggerGameOver('Waktu Telah Habis!');
+                        }
+                    }
+                    // Random Spawns
+                    if (Math.random() < 0.1 && !bonusFood) spawnBonusFood();
+                    if (Math.random() < 0.08 && !badFood) spawnBadFood();
+                    if (Math.random() < 0.05 && !powerUp) spawnPowerUp();
+                }
+            }, 1000);
+        }
+
+        function getSpeed() {
+            let baseSpeed = 120 - (level * 5);
+            if (activePowerUp === 'speed') baseSpeed *= 0.6;
+            return Math.max(50, baseSpeed);
+        }
+
+        function setDirection(newDx, newDy) {
+            if ((newDx === -dx && newDx !== 0) || (newDy === -dy && newDy !== 0)) return;
+            nextDx = newDx;
+            nextDy = newDy;
+        }
+
+        function handleKeyPress(e) {
+            if (isGameOver) return;
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W': setDirection(0, -1); break;
+                case 'ArrowDown': case 's': case 'S': setDirection(0, 1); break;
+                case 'ArrowLeft': case 'a': case 'A': setDirection(-1, 0); break;
+                case 'ArrowRight': case 'd': case 'D': setDirection(1, 0); break;
+                case 'p': case 'P': case ' ': togglePause(); break;
+            }
+        }
+
+        function gameStep() {
+            if (isPaused || isGameOver) return;
+
+            dx = nextDx;
+            dy = nextDy;
+
+            let headX = snake[0].x + dx;
+            let headY = snake[0].y + dy;
+
+            // Handle Wall Collisions by Mode
+            if (activeMode === 'classic') {
+                if (headX < 0) headX = tileCount - 1;
+                if (headX >= tileCount) headX = 0;
+                if (headY < 0) headY = tileCount - 1;
+                if (headY >= tileCount) headY = 0;
+            } else {
+                if (headX < 0 || headX >= tileCount || headY < 0 || headY >= tileCount) {
+                    if (activePowerUp === 'shield') {
+                        consumeShield();
+                        return;
+                    } else {
+                        triggerGameOver('Menabrak Dinding Area!');
+                        return;
+                    }
+                }
+            }
+
+            // Body Collision
+            for (let i = 0; i < snake.length; i++) {
+                if (snake[i].x === headX && snake[i].y === headY) {
+                    if (activePowerUp === 'shield') {
+                        consumeShield();
+                        return;
+                    } else {
+                        triggerGameOver('Menabrak Ekor Sendiri!');
+                        return;
+                    }
+                }
+            }
+
+            // Obstacle Collision
+            if (activeMode === 'maze') {
+                for (let obs of obstacles) {
+                    if (obs.x === headX && obs.y === headY) {
+                        if (activePowerUp === 'shield') {
+                            consumeShield();
+                            return;
+                        } else {
+                            triggerGameOver('Menabrak Rintangan Tembok!');
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Move Snake Head
+            const newHead = { x: headX, y: headY };
+            snake.unshift(newHead);
+
+            // Magnet Powerup Effect
+            if (activePowerUp === 'magnet') {
+                if (Math.abs(food.x - headX) <= 2 && Math.abs(food.y - headY) <= 2) {
+                    food.x = headX;
+                    food.y = headY;
+                }
+            }
+
+            // Check Food Collisions
+            if (headX === food.x && headY === food.y) {
+                eatFood();
+            } else if (bonusFood && headX === bonusFood.x && headY === bonusFood.y) {
+                eatBonusFood();
+            } else if (badFood && headX === badFood.x && headY === badFood.y) {
+                eatBadFood();
+            } else if (powerUp && headX === powerUp.x && headY === powerUp.y) {
+                eatPowerUp();
+            } else if (boss && headX === boss.x && headY === boss.y) {
+                eatBoss();
+            } else {
+                snake.pop(); // Remove tail
+            }
+
+            // Move Boss randomly
+            if (boss && Math.random() < 0.3) {
+                boss.x = (boss.x + Math.floor(Math.random() * 3) - 1 + tileCount) % tileCount;
+                boss.y = (boss.y + Math.floor(Math.random() * 3) - 1 + tileCount) % tileCount;
+            }
+
+            updateParticles();
+            draw();
+        }
+
+        // --- FOOD & POWERUP ACTIONS ---
+        function eatFood() {
+            sound.playEat();
+            triggerCombo();
+
+            const pts = 10 * combo;
+            score += pts;
+            if (activeMode === 'timeattack') timeAttackLeft += 2;
+
+            addFloatingText(`+${pts}`, snake[0].x, snake[0].y, '#10b981');
+            createParticles(food.x, food.y, '#ef4444');
+
+            unlockAchievement('first_bite');
+            if (score >= 100) unlockAchievement('score_100');
+            if (score >= 300) unlockAchievement('score_300');
+
+            checkLevelUp();
+            spawnFood();
+
+            // Spawn Boss at multiples of 80
+            if (score % 80 === 0 && !boss) spawnBoss();
+            updateUI();
+        }
+
+        function eatBonusFood() {
+            sound.playBonus();
+            score += 35 * combo;
+            addFloatingText(`+${35 * combo} BONUS!`, snake[0].x, snake[0].y, '#eab308');
+            createParticles(bonusFood.x, bonusFood.y, '#eab308');
+            bonusFood = null;
+            triggerScreenShake();
+            updateUI();
+        }
+
+        function eatBadFood() {
+            sound.playBad();
+            score = Math.max(0, score - 15);
+            addFloatingText(`-15`, snake[0].x, snake[0].y, '#a855f7');
+            createParticles(badFood.x, badFood.y, '#a855f7');
+            badFood = null;
+            updateUI();
+        }
+
+        function eatPowerUp() {
+            sound.playPowerup();
+            activePowerUp = powerUp.type;
+            powerUpTimeLeft = 7;
+            powerUp = null;
+
+            if (activePowerUp === 'shrink') {
+                snake = snake.slice(0, Math.max(3, snake.length - 3));
+                addFloatingText(`SHRINK!`, snake[0].x, snake[0].y, '#ec4899');
+            } else {
+                addFloatingText(`${activePowerUp.toUpperCase()}!`, snake[0].x, snake[0].y, '#06b6d4');
+            }
+
+            startPowerUpTimer();
+            updateUI();
+        }
+
+        function eatBoss() {
+            sound.playBonus();
+            score += 50 * combo;
+            addFloatingText(`+${50 * combo} BOSS!`, snake[0].x, snake[0].y, '#f97316');
+            createParticles(boss.x, boss.y, '#f97316');
+            boss = null;
+            unlockAchievement('boss_hunter');
+            triggerScreenShake();
+            updateUI();
+        }
+
+        function consumeShield() {
+            sound.playBonus();
+            activePowerUp = null;
+            unlockAchievement('shield_save');
+            addFloatingText(`SHIELD SAVED!`, snake[0].x, snake[0].y, '#3b82f6');
+            triggerScreenShake();
+            document.getElementById('powerupBar').classList.add('hidden');
+        }
+
+        function triggerCombo() {
+            combo = Math.min(5, combo + 1);
+            maxCombo = Math.max(maxCombo, combo);
+            if (combo >= 3) unlockAchievement('combo_3');
+
+            if (comboTimer) clearTimeout(comboTimer);
+            comboTimer = setTimeout(() => {
+                combo = 1;
+                updateUI();
+            }, 3500);
+        }
+
+        function checkLevelUp() {
+            const newLevel = Math.floor(score / 100) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                addFloatingText(`LEVEL UP!`, snake[0].x, snake[0].y, '#a855f7');
+                clearInterval(gameInterval);
+                gameInterval = setInterval(gameStep, getSpeed());
+            }
+        }
+
+        function startPowerUpTimer() {
+            const bar = document.getElementById('powerupBar');
+            const status = document.getElementById('powerupStatus');
+            const progress = document.getElementById('powerupProgress');
+
+            bar.classList.remove('hidden');
+            status.innerText = `⚡ ${activePowerUp.toUpperCase()} ACTIVE`;
+
+            if (powerUpTimer) clearInterval(powerUpTimer);
+            powerUpTimer = setInterval(() => {
+                powerUpTimeLeft -= 0.1;
+                progress.style.width = `${(powerUpTimeLeft / 7) * 100}%`;
+                if (powerUpTimeLeft <= 0) {
+                    clearInterval(powerUpTimer);
+                    activePowerUp = null;
+                    bar.classList.add('hidden');
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(gameStep, getSpeed());
+                }
+            }, 100);
+        }
+
+        // --- SPAWN LOGIC ---
+        function spawnFood() {
+            food = getEmptyPosition();
+        }
+
+        function spawnBonusFood() {
+            bonusFood = getEmptyPosition();
+            setTimeout(() => { bonusFood = null; }, 5000);
+        }
+
+        function spawnBadFood() {
+            badFood = getEmptyPosition();
+            setTimeout(() => { badFood = null; }, 6000);
+        }
+
+        function spawnPowerUp() {
+            const types = ['speed', 'shield', 'magnet', 'shrink'];
+            powerUp = {
+                ...getEmptyPosition(),
+                type: types[Math.floor(Math.random() * types.length)]
+            };
+            setTimeout(() => { powerUp = null; }, 7000);
+        }
+
+        function spawnBoss() {
+            boss = getEmptyPosition();
+            setTimeout(() => { boss = null; }, 8000);
+        }
+
+        function generateObstacles() {
+            obstacles = [];
+            if (activeMode !== 'maze') return;
+            for (let i = 0; i < 10; i++) {
+                obstacles.push(getEmptyPosition());
+            }
+        }
+
+        function getEmptyPosition() {
+            let pos;
+            let collision;
+            do {
+                collision = false;
+                pos = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+                for (let seg of snake) {
+                    if (seg.x === pos.x && seg.y === pos.y) collision = true;
+                }
+                for (let obs of obstacles) {
+                    if (obs.x === pos.x && obs.y === pos.y) collision = true;
+                }
+            } while (collision);
+            return pos;
+        }
+
+        // --- DRAWING / RENDERING ---
+        function draw() {
+            const tileSize = canvas.width / tileCount;
+
+            // Clear Background
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Grid Lines (Subtle)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * tileSize, 0);
+                ctx.lineTo(i * tileSize, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * tileSize);
+                ctx.lineTo(canvas.width, i * tileSize);
+                ctx.stroke();
+            }
+
+            // Draw Obstacles (Maze)
+            ctx.fillStyle = '#475569';
+            for (let obs of obstacles) {
+                ctx.fillRect(obs.x * tileSize + 1, obs.y * tileSize + 1, tileSize - 2, tileSize - 2);
+            }
+
+            // Draw Food
+            const foodSkin = FOOD_SKINS.find(s => s.id === selectedFoodSkin) || FOOD_SKINS[0];
+            ctx.fillStyle = foodSkin.color;
+            ctx.shadowColor = foodSkin.color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc((food.x + 0.5) * tileSize, (food.y + 0.5) * tileSize, tileSize / 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw Bonus Food
+            if (bonusFood) {
+                ctx.fillStyle = '#eab308';
+                ctx.shadowColor = '#eab308';
+                ctx.shadowBlur = 15;
+                ctx.fillRect(bonusFood.x * tileSize + 2, bonusFood.y * tileSize + 2, tileSize - 4, tileSize - 4);
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw Bad Food
+            if (badFood) {
+                ctx.fillStyle = '#a855f7';
+                ctx.fillRect(badFood.x * tileSize + 3, badFood.y * tileSize + 3, tileSize - 6, tileSize - 6);
+            }
+
+            // Draw PowerUp
+            if (powerUp) {
+                ctx.fillStyle = '#06b6d4';
+                ctx.shadowColor = '#06b6d4';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc((powerUp.x + 0.5) * tileSize, (powerUp.y + 0.5) * tileSize, tileSize / 2.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw Boss
+            if (boss) {
+                ctx.fillStyle = '#f97316';
+                ctx.shadowColor = '#f97316';
+                ctx.shadowBlur = 15;
+                ctx.fillRect(boss.x * tileSize + 1, boss.y * tileSize + 1, tileSize - 2, tileSize - 2);
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw Snake
+            const snakeSkin = SNAKE_SKINS.find(s => s.id === selectedSnakeSkin) || SNAKE_SKINS[0];
+            snake.forEach((seg, idx) => {
+                if (idx === 0) {
+                    ctx.fillStyle = snakeSkin.head;
+                    ctx.shadowColor = snakeSkin.head;
+                    ctx.shadowBlur = 12;
+                } else {
+                    if (snakeSkin.body === 'rainbow') {
+                        ctx.fillStyle = `hsl(${(idx * 20) % 360}, 80%, 50%)`;
+                    } else {
+                        ctx.fillStyle = snakeSkin.body;
+                    }
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.fillRect(seg.x * tileSize + 1, seg.y * tileSize + 1, tileSize - 2, tileSize - 2);
+            });
+            ctx.shadowBlur = 0;
+
+            // Render Particles & Text Effects
+            renderParticles();
+            renderFloatingText();
+        }
+
+        // --- PARTICLES & JUICE EFFECTS ---
+        function createParticles(x, y, color) {
+            const tileSize = canvas.width / tileCount;
+            for (let i = 0; i < 12; i++) {
+                particles.push({
+                    x: (x + 0.5) * tileSize,
+                    y: (y + 0.5) * tileSize,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    radius: Math.random() * 3 + 1,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        function updateParticles() {
+            particles.forEach((p, idx) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.04;
+                if (p.alpha <= 0) particles.splice(idx, 1);
+            });
+        }
+
+        function renderParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function addFloatingText(text, x, y, color) {
+            const tileSize = canvas.width / tileCount;
+            floatingTexts.push({
+                text: text,
+                x: (x + 0.5) * tileSize
